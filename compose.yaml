@@ -52,7 +52,18 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-
+  consumer:
+    build:
+      context: .
+    image: air-quality-app:dev
+    command: ["python", "consumer.py"]
+    restart: on-failure
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+        
 volumes:
   postgres_data:
   kafka_data:

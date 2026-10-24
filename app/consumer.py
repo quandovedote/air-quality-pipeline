@@ -108,11 +108,11 @@ def store_observation(values):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--limit", type=int, default=24)
+    parser.add_argument("--limit", type=int, default=0)
     args = parser.parse_args()
 
-    if args.limit < 1:
-        parser.error("Limit must be positive")
+    if args.limit < 0:
+        parser.error("Limit must be zero or positive")
 
     consumer = Consumer({
         "bootstrap.servers": "kafka:9092",
@@ -123,10 +123,11 @@ def main():
     })
 
     consumer.subscribe(["air-quality-observations"])
+    logging.info("Consumer started; waiting for observations")
     processed = 0
 
     try:
-        while processed < args.limit:
+        while args.limit == 0 or processed < args.limit:
             message = consumer.poll(timeout=1.0)
 
             if message is None:
