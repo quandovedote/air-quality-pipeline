@@ -170,8 +170,7 @@ Database credentials in Compose are local prototype credentials.
 - Validation of all 420,768 source rows: no failures under current rules.
 - Query-plan checks on the 1,440-row stored sample.
 
-Full-dataset ingestion, concurrent-user load and clean GitHub-clone
-reproducibility have not yet been tested.
+A clean local Git clone was tested successfully with fresh volumes and the documented dataset setup. Full-dataset ingestion, concurrent-user load, GitHub cloning and execution on another machine remain untested.
 
 Run validation checks:
 
