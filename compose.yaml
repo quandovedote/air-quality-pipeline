@@ -42,6 +42,17 @@ services:
       retries: 12
       start_period: 30s
 
+  producer:
+    build:
+      context: .
+    image: air-quality-app:dev
+    command: ["python", "producer.py"]
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      kafka:
+        condition: service_healthy
+
 volumes:
   postgres_data:
   kafka_data:
