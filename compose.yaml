@@ -8,6 +8,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./sql/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./sql/002_daily_summary.sql:/docker-entrypoint-initdb.d/002_daily_summary.sql:ro
+      - ./sql/004_reporting.sql:/docker-entrypoint-initdb.d/004_reporting.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U air_quality -d air_quality"]
       interval: 5s
@@ -63,7 +65,7 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-        
+
 volumes:
   postgres_data:
   kafka_data:
