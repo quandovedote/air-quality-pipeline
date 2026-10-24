@@ -44,6 +44,24 @@ services:
       retries: 12
       start_period: 30s
 
+  kafka-init:
+    image: apache/kafka:4.3.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/opt/kafka/bin/kafka-topics.sh"]
+    command:
+      - --bootstrap-server
+      - kafka:9092
+      - --create
+      - --if-not-exists
+      - --topic
+      - air-quality-observations
+      - --partitions
+      - "1"
+      - --replication-factor
+      - "1"
+
   producer:
     build:
       context: .
@@ -52,8 +70,9 @@ services:
     volumes:
       - ./data:/data:ro
     depends_on:
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+
   consumer:
     build:
       context: .
@@ -61,8 +80,8 @@ services:
     command: ["python", "consumer.py"]
     restart: on-failure
     depends_on:
-      kafka:
-        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
 
