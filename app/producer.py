@@ -28,26 +28,55 @@ def observation_time(row):
 
 
 def ordered_rows(data_dir):
-    """Merge the chronologically sorted station files without loading them all."""
-    paths = sorted(Path(data_dir).glob("PRSA_Data_*.csv"))
+    """Wait for all station files, then merge them by observation time."""
+    expected_files = 12
 
-    if not paths:
-        raise FileNotFoundError(f"No station CSV files found in {data_dir}")
-
-    with ExitStack() as stack:
-        readers = [
-            csv.DictReader(
-                stack.enter_context(
-                    path.open(encoding="utf-8-sig", newline="")
+    while True:
+        with ExitStack() as stack:
+            try:
+                paths = sorted(
+                    Path(data_dir).glob("PRSA_Data_*.csv")
                 )
-            )
-            for path in paths
-        ]
 
-        yield from heapq.merge(
-            *readers,
-            key=lambda row: (observation_time(row), row["station"]),
-        )
+                if len(paths) != expected_files:
+                    raise FileNotFoundError(
+                        f"Expected {expected_files} station files "
+                        f"in {data_dir}; found {len(paths)}"
+                    )
+
+                readers = [
+                    csv.DictReader(
+                        stack.enter_context(
+                            path.open(
+                                encoding="utf-8-sig",
+                                newline="",
+                            )
+                        )
+                    )
+                    for path in paths
+                ]
+
+            except OSError as error:
+                logging.warning(
+                    "Source unavailable: %s. Retrying in 5 seconds.",
+                    error,
+                )
+                time.sleep(5)
+                continue
+
+            logging.info(
+                "Source ready: %s station files",
+                len(paths),
+            )
+
+            yield from heapq.merge(
+                *readers,
+                key=lambda row: (
+                    observation_time(row),
+                    row["station"],
+                ),
+            )
+            return
 
 
 def send_observation(producer, topic, row):
