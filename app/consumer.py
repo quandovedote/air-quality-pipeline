@@ -33,30 +33,64 @@ INSERT_SQL = """
     )
     ON CONFLICT (station, observed_at) DO NOTHING
 """
+EXPECTED_STATIONS = {
+    "Aotizhongxin", "Changping", "Dingling", "Dongsi",
+    "Guanyuan", "Gucheng", "Huairou", "Nongzhanguan",
+    "Shunyi", "Tiantan", "Wanliu", "Wanshouxigong",
+}
 
+WIND_DIRECTIONS = {
+    "N", "NNE", "NE", "ENE",
+    "E", "ESE", "SE", "SSE",
+    "S", "SSW", "SW", "WSW",
+    "W", "WNW", "NW", "NNW",
+}
+
+NON_NEGATIVE_FIELDS = {
+    "PM2.5", "PM10", "SO2", "NO2", "CO", "O3",
+    "RAIN", "WSPM",
+}
 
 def measurement_value(value, field):
     if value is None or str(value).strip() in ("", "NA"):
         return None
 
     if field == "wd":
-        return str(value).strip()
+        direction = str(value).strip()
+
+        if direction not in WIND_DIRECTIONS:
+            raise ValueError(
+                f"Invalid wind direction: {direction}"
+            )
+
+        return direction
 
     number = Decimal(str(value))
 
     if not number.is_finite():
         raise ValueError(f"Non-finite measurement in {field}")
 
-    return number
+    if field in NON_NEGATIVE_FIELDS and number < 0:
+        raise ValueError(f"Negative measurement in {field}")
 
+    if field == "PRES" and number <= 0:
+        raise ValueError("Pressure must be positive")
+
+    return number
 
 def prepare_observation(row):
     if not isinstance(row, dict):
         raise ValueError("Expected a JSON object")
 
-    station = row["station"].strip()
-    if not station:
-        raise ValueError("Station must not be empty")
+    station = row["station"]
+
+    if not isinstance(station, str):
+        raise ValueError("Station must be text")
+
+    station = station.strip()
+
+    if station not in EXPECTED_STATIONS:
+        raise ValueError(f"Unknown station: {station}")
 
     observed_at = datetime(
         int(row["year"]),
