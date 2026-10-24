@@ -169,6 +169,10 @@ Database credentials in Compose are local prototype credentials.
 - Fresh database, Kafka and complete local startup.
 - Validation of all 420,768 source rows: no failures under current rules.
 - Query-plan checks on the 1,440-row stored sample.
+- Reporting with 24 received records but no valid PM2.5 measurements,
+  verified using a rolled-back transaction.
+- Kafka topic end offset and committed consumer offset preserved across
+  broker container recreation with its named volume retained.
 
 A clean local Git clone was tested successfully with fresh volumes and the documented dataset setup. Full-dataset ingestion, concurrent-user load, GitHub cloning and execution on another machine remain untested.
 
