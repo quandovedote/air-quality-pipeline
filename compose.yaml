@@ -1,41 +1,58 @@
 services:
+  # Store validated observations and provide SQL reporting.
   postgres:
     image: postgres:18.6
     environment:
+      # Local prototype credentials.
       POSTGRES_DB: air_quality
       POSTGRES_USER: air_quality
       POSTGRES_PASSWORD: local_dev_password
     volumes:
+      # Retain database files when the container is recreated.
       - postgres_data:/var/lib/postgresql
+
+      # Run these SQL scripts in filename order on a fresh database only.
+      # :ro allows the container to read, but not modify, the scripts.
       - ./sql/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
       - ./sql/002_daily_summary.sql:/docker-entrypoint-initdb.d/002_daily_summary.sql:ro
       - ./sql/004_reporting.sql:/docker-entrypoint-initdb.d/004_reporting.sql:ro
     healthcheck:
+      # Check whether PostgreSQL is accepting connections.
       test: ["CMD-SHELL", "pg_isready -U air_quality -d air_quality"]
       interval: 5s
       timeout: 5s
       retries: 10
 
+  # Buffer observations between the producer and database consumer.
   kafka:
     image: apache/kafka:4.3.1
     environment:
+      # One node performs both broker and controller roles.
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
+
+      # Separate application traffic from controller communication.
+      # Other containers reach the broker using the service name "kafka".
       KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Internal topics use one replica because the prototype has one broker.
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+      # Store Kafka logs on the named volume and limit JVM heap usage.
       KAFKA_LOG_DIRS: /var/lib/kafka/data
       KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
+      # Check whether the broker responds to a topic-list request.
       test:
         - CMD-SHELL
         - /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
@@ -44,6 +61,7 @@ services:
       retries: 12
       start_period: 30s
 
+  # Create the observation topic, then exit successfully.
   kafka-init:
     image: apache/kafka:4.3.1
     depends_on:
@@ -54,30 +72,38 @@ services:
       - --bootstrap-server
       - kafka:9092
       - --create
+      # Allow initialization to run again when the topic already exists.
       - --if-not-exists
       - --topic
       - air-quality-observations
+      # One partition and one replica for the local prototype.
       - --partitions
       - "1"
       - --replication-factor
       - "1"
 
+  # Replay historical CSV observations as individual Kafka messages.
   producer:
     build:
+      # Build the application image using the Dockerfile in this folder.
       context: .
     image: air-quality-app:dev
     command: ["python", "producer.py"]
     volumes:
+      # Expose local CSV files at /data without allowing modifications.
       - ./data:/data:ro
     depends_on:
+      # Start replay only after topic initialization succeeds.
       kafka-init:
         condition: service_completed_successfully
 
+  # Validate Kafka messages and store observations in PostgreSQL.
   consumer:
     build:
       context: .
     image: air-quality-app:dev
     command: ["python", "consumer.py"]
+    # Restart after an error exit, including exhausted database retries.
     restart: on-failure
     depends_on:
       kafka-init:
@@ -85,6 +111,7 @@ services:
       postgres:
         condition: service_healthy
 
+# Named volumes survive container removal unless explicitly deleted.
 volumes:
   postgres_data:
   kafka_data:
