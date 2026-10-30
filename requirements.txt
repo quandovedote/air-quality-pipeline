@@ -1,2 +1,5 @@
+# Send and receive Kafka messages.
 confluent-kafka==2.12.0
+
+# Connect to PostgreSQL using the prebuilt package.
 psycopg[binary]==3.2.10
