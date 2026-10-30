@@ -10,6 +10,7 @@ FROM report_daily_pm25(
     DATE '2013-03-05'
 )
 WHERE coverage_status = 'complete'
+-- Within each day, show the highest average first.
 ORDER BY observation_date, daily_avg_pm25 DESC, station;
 
 -- Show all excluded station-days and their coverage.
@@ -25,5 +26,6 @@ FROM report_daily_pm25(
     DATE '2013-03-04',
     DATE '2013-03-05'
 )
+-- <> means "not equal to": include every status except complete.
 WHERE coverage_status <> 'complete'
 ORDER BY observation_date, station;
