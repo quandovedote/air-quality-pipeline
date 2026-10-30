@@ -1,3 +1,4 @@
+# Build the shared Python image used by the producer and consumer.
 FROM python:3.12-slim-bookworm
 
 WORKDIR /app
