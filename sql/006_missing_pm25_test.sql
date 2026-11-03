@@ -1,3 +1,4 @@
+-- Start a transaction so the test observations can be removed afterwards.
 BEGIN;
 
 -- Add a hypothetical future day for an existing station.
@@ -43,4 +44,5 @@ BEGIN
 END;
 $$;
 
+-- Undo the test inserts, leaving the stored observations unchanged.
 ROLLBACK;
