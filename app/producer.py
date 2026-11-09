@@ -36,6 +36,7 @@ def ordered_rows(data_dir):
         # Close all opened CSV files when leaving this block.
         with ExitStack() as stack:
             try:
+                # Look for dataset files by name. Replay needs 12 matching files.
                 paths = sorted(
                     Path(data_dir).glob("PRSA_Data_*.csv")
                 )
@@ -46,6 +47,8 @@ def ordered_rows(data_dir):
                         f"in {data_dir}; found {len(paths)}"
                     )
 
+                # Create one reader per file. Each row uses the CSV headers
+                # as field names, so we can look up values like row["station"].
                 readers = [
                     csv.DictReader(
                         stack.enter_context(
@@ -59,6 +62,8 @@ def ordered_rows(data_dir):
                 ]
 
             except OSError as error:
+                # Retry file discovery or opening before replay starts.
+                # Errors while reading rows later are outside this retry block.
                 logging.warning(
                     "Source unavailable: %s. Retrying in 5 seconds.",
                     error,
@@ -71,8 +76,9 @@ def ordered_rows(data_dir):
                 len(paths),
             )
 
-            # Merge the already sorted files one row at a time.
-            # Use the station name to break ties at the same time.
+            # Each CSV must already be in time order. Merge the files without
+            # loading all rows into memory, using station names to break ties.
+            # *readers passes each CSV reader as a separate input to the merge.
             yield from heapq.merge(
                 *readers,
                 key=lambda row: (
@@ -87,11 +93,13 @@ def send_observation(producer, topic, row):
     """Wait for Kafka's delivery acknowledgement before returning."""
     errors = []
 
+    # The Kafka client calls this function with the delivery result.
     def delivery_report(error, message):
         if error is not None:
             errors.append(str(error))
 
-    # Use the station as the key and the full row as the message value.
+    # Queue one message. Use the station as the key and send the full row
+    # as JSON encoded in UTF-8 bytes, which the consumer decodes later.
     producer.produce(
         topic,
         key=row["station"],
@@ -99,8 +107,10 @@ def send_observation(producer, topic, row):
         on_delivery=delivery_report,
     )
 
+    # Wait for delivery results. A nonzero result means work is still pending.
     remaining = producer.flush(timeout=65)
 
+    # Stop the replay if this send failed or delivery is still unconfirmed.
     if errors or remaining:
         raise RuntimeError(
             f"Delivery not confirmed: {errors or 'message still pending'}"
@@ -108,7 +118,8 @@ def send_observation(producer, topic, row):
 
 
 def main():
-    # Let users change replay settings from the command line.
+    # Read replay settings from the command line. The limit counts observations,
+    # and the interval is the pause in seconds between sends.
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", default="/data")
     parser.add_argument("--bootstrap-servers", default="kafka:9092")
@@ -120,6 +131,8 @@ def main():
     if args.interval < 0 or args.limit < 1:
         parser.error("Interval must be non-negative and limit must be positive.")
 
+    # Idempotence protects against duplicates from the client's own retries.
+    # Starting a new replay can still send the same CSV rows again.
     producer = Producer({
         "bootstrap.servers": args.bootstrap_servers,
         "enable.idempotence": True,
@@ -130,7 +143,8 @@ def main():
     sent = 0
 
     for row in ordered_rows(args.data_dir):
-        # Count the observation only after Kafka confirms delivery.
+        # Count the row once Kafka confirms delivery. This does not mean
+        # the consumer has saved the observation to PostgreSQL yet.
         send_observation(producer, args.topic, row)
         sent += 1
 
@@ -141,6 +155,7 @@ def main():
             observation_time(row).isoformat(),
         )
 
+        # Check the limit before sleeping so there is no pause after reaching it.
         if sent >= args.limit:
             break
 
