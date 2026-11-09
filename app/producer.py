@@ -1,3 +1,4 @@
+# Replay historical CSV observations as individual Kafka messages.
 import argparse
 import csv
 import heapq
@@ -32,6 +33,7 @@ def ordered_rows(data_dir):
     expected_files = 12
 
     while True:
+        # Close all opened CSV files when leaving this block.
         with ExitStack() as stack:
             try:
                 paths = sorted(
@@ -69,6 +71,8 @@ def ordered_rows(data_dir):
                 len(paths),
             )
 
+            # Merge the already sorted files one row at a time.
+            # Use the station name to break ties at the same time.
             yield from heapq.merge(
                 *readers,
                 key=lambda row: (
@@ -87,6 +91,7 @@ def send_observation(producer, topic, row):
         if error is not None:
             errors.append(str(error))
 
+    # Use the station as the key and the full row as the message value.
     producer.produce(
         topic,
         key=row["station"],
@@ -103,6 +108,7 @@ def send_observation(producer, topic, row):
 
 
 def main():
+    # Let users change replay settings from the command line.
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-dir", default="/data")
     parser.add_argument("--bootstrap-servers", default="kafka:9092")
@@ -124,6 +130,7 @@ def main():
     sent = 0
 
     for row in ordered_rows(args.data_dir):
+        # Count the observation only after Kafka confirms delivery.
         send_observation(producer, args.topic, row)
         sent += 1
 
