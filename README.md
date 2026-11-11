@@ -157,7 +157,8 @@ an incomplete day permanently final.
 - Missing CSV measurements become SQL NULL.
 - Invalid station names, dates and selected invalid measurements stop processing.
 - Kafka progress is committed only after a successful database transaction.
-- Database connection failures are retried five times.
+- Database connection failures trigger up to five connection attempts,
+  with a two-second wait between failed attempts.
 - Docker restarts the consumer if it exits with an error.
 - The producer waits and retries when the expected source files cannot
   be found or opened before replay.
@@ -271,13 +272,18 @@ These optional read-only checks require the 12 original CSV files and
 all 420,768 observations stored in PostgreSQL. They will fail against
 the default 24-observation sample.
 
-With the pipeline running, replay the full dataset:
+If the full dataset has not already been loaded, run the following command
+with the pipeline running. Otherwise, proceed to the completion checks:
 
 ```bash
 docker compose run --rm producer python producer.py --limit 420768 --interval 0
 ```
 
 Producer completion confirms Kafka delivery, not database completion.
+The consumer may continue processing a backlog after the producer exits.
+Full-dataset storage took substantially longer than Kafka delivery in
+the local test; processing time depends on the machine and configuration.
+
 Wait until PostgreSQL contains 420,768 observations and the consumer
 group air-quality-storage reports zero lag:
 
