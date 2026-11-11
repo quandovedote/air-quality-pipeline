@@ -1,5 +1,8 @@
+# Exclude Git history and local Python files from the build context.
 .git
 .venv
 __pycache__
 *.pyc
+
+# CSV files are mounted at runtime rather than copied into the image.
 data/

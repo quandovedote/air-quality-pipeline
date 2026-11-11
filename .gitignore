@@ -1,6 +1,9 @@
+# Ignore macOS files and local Python development files.
 .DS_Store
 __pycache__/
 *.pyc
 .venv/
+
+# Keep local configuration and datasets out of version control.
 .env
 data/
