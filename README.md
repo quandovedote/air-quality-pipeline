@@ -153,6 +153,8 @@ A persistent invalid message blocks consumer progress and requires investigation
 Recovery from source read errors during replay has not been implemented.
 The single broker provides no replicated protection against storage loss.
 Kafka buffering is limited by retention settings and available disk space.
+Named volumes are not backups and do not prevent file corruption.
+Recovery from damaged Kafka storage may require manual intervention.
 
 Database credentials in Compose are local prototype credentials.
 
@@ -173,6 +175,19 @@ Database credentials in Compose are local prototype credentials.
   verified using a rolled-back transaction.
 - Kafka topic end offset and committed consumer offset preserved across
   broker container recreation with its named volume retained.
+
+On 11 November 2026, Kafka failed to start because its
+replication-offset-checkpoint file contained invalid data. Kafka storage
+was backed up and the archive's readability checked before the damaged
+checkpoint was renamed. Kafka then recreated the checkpoint and started
+successfully. The original cause of the damage remains unknown.
+
+After recovery, 24 observations were replayed and recognised as duplicates.
+PostgreSQL retained its 1,440 observations, and the consumer reached zero
+lag at offset 3038. Old topic messages and the previous consumer-group
+bookmark were unavailable; retention expiry was a possible explanation
+but was not conclusively established. This was manual recovery, not an
+automatic repair performed by the pipeline.
 
 A clean local Git clone was tested successfully with fresh volumes and the documented dataset setup. Full-dataset ingestion, concurrent-user load, GitHub cloning and execution on another machine remain untested.
 
