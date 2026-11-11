@@ -262,6 +262,46 @@ Inspect query plans:
 docker compose exec -T postgres psql -U air_quality -d air_quality -P pager=off -v ON_ERROR_STOP=1 < sql/005_query_performance.sql
 ```
 
+## Full-dataset verification
+
+These optional read-only checks require the 12 original CSV files and
+all 420,768 observations stored in PostgreSQL. They will fail against
+the default 24-observation sample.
+
+With the pipeline running, replay the full dataset:
+
+```bash
+docker compose run --rm producer python producer.py --limit 420768 --interval 0
+```
+
+Producer completion confirms Kafka delivery, not database completion.
+Wait until PostgreSQL contains 420,768 observations and the consumer
+group air-quality-storage reports zero lag:
+
+```bash
+docker compose exec postgres psql -U air_quality -d air_quality -P pager=off -c "SELECT COUNT(*) FROM observations;"
+docker compose exec kafka /opt/kafka/bin/kafka-consumer-groups.sh --bootstrap-server kafka:9092 --group air-quality-storage --describe
+```
+
+Then run the verification scripts:
+
+```bash
+docker compose run --no-deps --build --rm producer python check_full_storage.py
+docker compose run --no-deps --rm producer python check_full_reporting.py
+```
+
+The storage check compares every station, observation timestamp and
+measurement field with the source CSV files, including missing values.
+The reporting check independently calculates daily PM2.5 results from
+the CSV files and compares them with the SQL view and reporting function.
+It also checks absent station-days immediately outside the dataset.
+
+Both scripts raise an error if a comparison fails.
+
+The commands above use the default Compose project. If using a separate
+test project, add its project option to every command, for example:
+docker compose -p air-quality-github-test ...
+
 ## Stop the pipeline
 
 ```bash
