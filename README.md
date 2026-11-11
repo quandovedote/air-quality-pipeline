@@ -184,7 +184,10 @@ Database credentials in Compose are local prototype credentials.
 - Reports updating when additional historical observations arrive.
 - Fresh database, Kafka and complete local startup.
 - Validation of all 420,768 source rows: no failures under current rules.
-- Query-plan checks on the 1,440-row stored sample.
+- Query-plan checks against the 420,768-row database: indexed
+  station-and-day lookup and date filtering before daily aggregation.
+  Single local execution times were approximately 8 ms for the lookup
+  and 91 ms for the five-day report; these are not production benchmarks.
 - Reporting with 24 received records but no valid PM2.5 measurements,
   verified using a rolled-back transaction.
 - Kafka topic end offset and committed consumer offset preserved across
