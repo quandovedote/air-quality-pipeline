@@ -40,6 +40,17 @@ The prototype uses one Kafka broker with replication factor 1.
 
 Python and its dependencies run inside Docker.
 
+## Get the project
+
+Clone the repository and enter its folder:
+
+```bash
+git clone https://github.com/quandovedote/air-quality-pipeline.git
+cd air-quality-pipeline
+```
+
+Then download the dataset as described below.
+
 ## Dataset setup
 
 Download and extract the Beijing Multi-Site Air Quality dataset:
@@ -192,7 +203,9 @@ bookmark were unavailable; retention expiry was a possible explanation
 but was not conclusively established. This was manual recovery, not an
 automatic repair performed by the pipeline.
 
-A clean local Git clone was tested successfully with fresh volumes and the documented dataset setup. Full-dataset ingestion, concurrent-user load, GitHub cloning and execution on another machine remain untested.
+A clean local Git clone was tested successfully with fresh volumes and
+the documented dataset setup. Full-dataset ingestion, concurrent-user
+load, GitHub cloning and execution on another machine remain untested.
 
 Run validation checks:
 
