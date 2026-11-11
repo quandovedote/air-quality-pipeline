@@ -203,9 +203,15 @@ bookmark were unavailable; retention expiry was a possible explanation
 but was not conclusively established. This was manual recovery, not an
 automatic repair performed by the pipeline.
 
-A clean local Git clone was tested successfully with fresh volumes and
-the documented dataset setup. Full-dataset ingestion, concurrent-user
-load, GitHub cloning and execution on another machine remain untested.
+A clean local Git clone and a fresh clone from the public GitHub repository
+were tested successfully on the development Mac using fresh Docker volumes
+and manually supplied dataset files. The GitHub clone test automatically
+created the database and Kafka topic, stored 24 observations across 12
+stations, and returned reports showing two received hours per station
+with incomplete coverage.
+
+Full-dataset ingestion, concurrent-user load and execution on another
+machine remain untested.
 
 Run validation checks:
 
