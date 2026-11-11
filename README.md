@@ -210,8 +210,28 @@ created the database and Kafka topic, stored 24 observations across 12
 stations, and returned reports showing two received hours per station
 with incomplete coverage.
 
-Full-dataset ingestion, concurrent-user load and execution on another
-machine remain untested.
+Full-dataset ingestion was verified using the separate GitHub test setup.
+PostgreSQL stored all 420,768 unique observations across 12 stations,
+with 35,064 observations per station, and the Kafka consumer reached
+zero lag.
+
+An independent comparison against the source CSV files found zero
+mismatches in station names, observation timestamps and all 12 measurement
+fields, including missing values. The comparison confirmed that all
+8,739 missing PM2.5 readings were preserved as SQL NULL.
+
+Independent CSV calculations matched all 17,532 station-days returned by
+the daily summary view, including daily averages, received-record counts,
+valid-reading counts, coverage percentages and statuses. Results comprised
+15,144 complete station-days, 2,323 incomplete station-days and 65 with
+no valid PM2.5 measurements.
+
+The reporting function matched the same results and correctly returned
+24 additional no_received_records rows when the requested period included
+one day before and one day after the dataset.
+
+Concurrent-user load, production-scale performance and execution on
+another machine remain untested.
 
 Run validation checks:
 
