@@ -92,6 +92,9 @@ docker compose exec postgres psql -U air_quality -d air_quality -P pager=off -c 
 ```
 
 A fresh default run should eventually contain 24 rows.
+These 24 observations cover two hours across 12 stations, not a full day.
+Daily reports will therefore show incomplete coverage until more
+observations are replayed.
 
 ## Replay a larger sample
 
@@ -194,9 +197,25 @@ A clean local Git clone was tested successfully with fresh volumes and the docum
 Run validation checks:
 
 ```bash
-docker compose run --build --rm producer python check_validation.py
-docker compose run --rm producer python check_dataset.py
+docker compose run --no-deps --build --rm producer python check_validation.py
+docker compose run --no-deps --rm producer python check_dataset.py
 ```
+
+Check database connectivity and the stored row count:
+
+```bash
+docker compose up -d postgres
+docker compose run --no-deps --build --rm producer python check_database.py
+```
+
+Test reporting when all 24 received PM2.5 readings are missing:
+
+```bash
+docker compose exec -T postgres psql -U air_quality -d air_quality -P pager=off -v ON_ERROR_STOP=1 < sql/006_missing_pm25_test.sql
+```
+
+The reporting test inserts artificial observations inside a transaction
+and rolls them back afterwards.
 
 Inspect query plans:
 
