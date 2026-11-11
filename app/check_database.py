@@ -1,6 +1,8 @@
+# Check database connectivity and count the stored observations.
 import psycopg
 
 
+# "postgres" is the database service name inside the Docker Compose network.
 with psycopg.connect(
     host="postgres",
     port=5432,
@@ -11,6 +13,8 @@ with psycopg.connect(
 ) as connection:
     with connection.cursor() as cursor:
         cursor.execute("SELECT current_database(), COUNT(*) FROM observations")
+
+        # Read the two values returned by the query.
         database, count = cursor.fetchone()
 
         print(f"Connected to database: {database}")
